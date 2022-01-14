@@ -40,55 +40,20 @@ function calculateWinner(squares) {
 // The Board is a component that contains a array of 9 elements
 // representing the 3x3 Squares.
 class Board extends React.Component {
-  constructor(props) {
-    super(props);
-    // store the Game’s state in the parent Board component
-    // instead of in each Square.
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true
-    };
-  }
-
-  handleClick(i) {
-    // create a copy of the squares Array
-    const squares = this.state.squares.slice();
-    // ignore click if someone has won the game or if a Square is already
-    // filled.
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    squares[i] = this.state.xIsNext ? "X" : "O";
-    this.setState({
-      squares: squares,
-      // flip to determine which player goes next
-      xIsNext: !this.state.xIsNext
-    });
-  }
-
   renderSquare(i) {
     return (
       // pass a function from Board to the Square, that the Square
       // is called when it is clicked, i.e. handleClick
       <Square
-        value={this.state.squares[i]}
-        onClick={() => this.handleClick(i)}
+        value={this.props.squares[i]}
+        onClick={() => this.props.onClick(i)}
       />
     );
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status;
-    if (winner) {
-      status = "Winner: " + winner;
-    } else {
-      status = "Next player: " + (this.state.xIsNext ? "X" : "O");
-    }
-
     return (
       <div>
-        <div className="status"> {status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -116,33 +81,69 @@ class Game extends React.Component {
     // instead of in each Square.
     this.state = {
       history: [{squares: Array(9).fill(null)}],
+      stepNumber: 0,
       xIsNext: true
     };
   }
 
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
+    const current = history[history.length - 1];
+    // create a copy of the squares Array
+    const squares = current.squares.slice();
+    // ignore click if someone has won the game or if a Square is already
+    // filled.
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? "X" : "O";
+    this.setState({
+      // concatenate new history entries onto history
+      // unlike push method the concat method doesn't mutate the original array
+      history: history.concat([{squares: squares}]),
+      stepNumber: history.length,
+      // flip to determine which player goes next
+      xIsNext: !this.state.xIsNext
+    });
+  }
+
+  jumpTo(step) {
+    this.setState({
+      stepNumber: step,
+      xIsNext: step % 2 === 0
+    });
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ? "Go to move #" + move : "Go to game start";
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    });
+
+    let status;
+    if (winner) {
+      status = "Winner: " + winner;
+    } else {
+      status = "Next Player: " + (this.state.xIsNext ? "X" : "O");
+    }
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board squares={current.squares} onClick={i => this.handleClick(i)} />
         </div>
         <div className="game-info">
-          <div> {/* status */} </div>
-          <ol> {/* TODO */} </ol>
+          <div> {status} </div>
+          <ol> {moves} </ol>
         </div>
-      </div>
-    );
-  }
-}
-
-class ShoppingList extends React.Component {
-  render() {
-    return (
-      <div className="shopping-list">
-        <h1> Shopping List for {this.props.name} </h1>
-        <ul>
-          <li> Instagram </li> <li> WhatsApp </li> <li> Oculus </li>
-        </ul>
       </div>
     );
   }
